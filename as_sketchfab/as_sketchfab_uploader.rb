@@ -13,8 +13,8 @@ Author :        Alexander Schreyer, www.alexschreyer.net, mail@alexschreyer.net
 Website:        http://www.alexschreyer.net/projects/sketchfab-uploader-plugin-for-sketchup/
 
 Name :          Sketchfab Uploader
-Version:        1.7
-Date :          2/18/2014
+Version:        1.8
+Date :          2/19/2014
 
 Description :   This plugin uploads the currently open model to Sketchfab.com
 
@@ -47,6 +47,8 @@ History:        1.0 (7/13/2012):
                 - Added new upload method
                 - Implemented multipart upload via new API
                 - Added option to open model after uploading
+                1.8 (2/19/1024)
+                - Switched from kmz to dae format
 
 Issues:
                 - For versions before SU 2014: the post_url function does not accept returned data.
@@ -84,6 +86,7 @@ THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 require 'sketchup'
+require File.dirname(__FILE__) + "/bin/RubyZip"
 
 
 # ========================
@@ -101,11 +104,13 @@ module AS_SketchfabUploader
                 File.dirname(__FILE__) )
     # Cleanup slashes
     @user_dir = @user_dir.tr("\\","/")
-    @filename = File.join(@user_dir , 'temp_export.kmz')
+    @filename = File.join(@user_dir , 'temp_export.dae')
+	@asset_dir = File.join(@user_dir, 'temp_export')
+	@zip_name = File.join(@user_dir,'temp_export.zip')
     
-    # Exporter options - doesn't work with KMZ export, though
+    # Exporter options
     @options_hash = {  :triangulated_faces   => true,
-                      :doublesided_faces    => true,
+                      :doublesided_faces    => false,
                       :edges                => true,
                       :materials_by_layer   => false,
                       :author_attribution   => true,
@@ -120,11 +125,15 @@ module AS_SketchfabUploader
     def self.show_dialog_2013
     # This uses a json approach to upload (for < SU 2014)
         
-        # Export model as KMZ
+        # Export model as DAE
         if Sketchup.active_model.export @filename, @options_hash then
+
+            # zip all the files
+            cmd = "RZipper.zip '" + @zip_name + "', '" + @filename + "', '" + @asset_dir + "'";
+            eval(cmd);
             
             # Open file as binary and encode it as Base64
-            contents = open(@filename, "rb") {|io| io.read }
+            contents = open(@zip_name, "rb") {|io| io.read }
             encdata = [contents].pack('m')
             
             # Then delete the temporary files
